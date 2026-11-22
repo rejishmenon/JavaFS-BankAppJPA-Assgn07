@@ -2,14 +2,13 @@ package BankAppJPA;
 
 import BankAppJPA.exceptions.*;
 import BankAppJPA.model.Account;
-import BankAppJPA.model.AddNewAccount;
-import BankAppJPA.model.DelAccount;
-import BankAppJPA.model.GetAcctDetails;
+import BankAppJPA.service.AddNewAccount;
+import BankAppJPA.service.DelAccount;
+import BankAppJPA.service.GetAcctDetails;
+import BankAppJPA.service.UpdateAccount;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Persistence;
-import jakarta.persistence.EntityExistsException;
-import org.hibernate.Session;
 
 import java.sql.SQLException;
 import java.util.Scanner;
@@ -31,7 +30,7 @@ public class BankAppMain {
 
     public static void main(String[] args) {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("bankappJPA");
-        try(EntityManager em= emf.createEntityManager()) {
+        try (EntityManager em = emf.createEntityManager()) {
             System.out.println("\n----------------------------------");
             System.out.println("Welcome to the Bank App!  ");
             System.out.println("What do you want to do?   ");
@@ -48,10 +47,11 @@ public class BankAppMain {
                     delAccount(em);
                 case 3:
                     primeMenu(em);
-
+                default:
+                    System.out.println("Invalid Choice...");
             }
 
-        }finally {
+        } finally {
             emf.close();
         }
     }
@@ -66,9 +66,9 @@ public class BankAppMain {
         pin = scanner.nextInt();
         Account account = new Account(name, amt, pin);
 
-        try{
+        try {
             AddNewAccount.addNewAccount(em, account);
-        }catch (SQLException e){
+        } catch (SQLException e) {
             System.out.println(e.getMessage() + " Goodbye....");
         }
     }
@@ -84,24 +84,122 @@ public class BankAppMain {
             if (primeacct != null) {
                 DelAccount.deleteAcctbyID(em, primeacct);
             }
-        }catch (AccountDeletionException e){
-            loop=false;
+        } catch (AccountDeletionException e) {
+            loop = false;
             System.out.println(e.getMessage() + " Goodbye....");
         }
     }
-    public static void primeMenu(EntityManager em){
+
+    public static void primeMenu(EntityManager em) {
         System.out.println("\n----------------------------------");
         System.out.println("Welcome to the Bank App!  ");
         System.out.print("Please enter your account ID >> ");
         primeacct_id = scanner.nextInt();
 
         try {
-            primeacct= GetAcctDetails.getAcctByID(em,primeacct_id);
+            primeacct = GetAcctDetails.getAcctByID(em, primeacct_id);
             System.out.println(primeacct.toString());
         } catch (AccountNotFoundException e) {
-            loop=false;
+            loop = false;
             System.out.println(e.getMessage() + " Goodbye....");
         }
-//        mainMenu(primeacct);
+        mainMenu(em, primeacct);
     }
+
+
+    private static void mainMenu(EntityManager em, Account acct) {
+        while (loop) {
+            System.out.println("\n----------------------------------");
+            System.out.println("Welcome " + acct.getName() + ", to the new BankApp!  ");
+            System.out.println("Please select an option :");
+            System.out.println("1. Check Balance");
+            System.out.println("2. Deposit");
+            System.out.println("3. Withdraw");
+            System.out.println("4. Transfer funds");
+            System.out.println("5. Exit");
+            System.out.print(">>> ");
+
+            choice = scanner.nextInt();
+
+            switch (choice) {
+                case 1:
+                    displaybalance(primeacct);
+                    break;
+                case 2:
+                    deposit(em, primeacct);
+                    break;
+                case 3:
+                    withdraw(em, primeacct);
+                    break;
+                case 4:
+                    transferFunds(em, primeacct);
+                    break;
+                case 5:
+                    System.out.println("Thank you for visiting, Goodbye !!!");
+                    loop = false;
+                    break;
+                default:
+                    System.out.println("Invalid input, retry : \n");
+                    break;
+            }
+        }
+    }
+
+    public static void displaybalance(Account acct){
+        System.out.println("Your current account balance is " + acct.getBalance());
+    }
+
+    public static void deposit(EntityManager em, Account acct){
+        System.out.println("Your Current Account Balance = " + acct.getBalance());
+        System.out.print("Enter amount you want to deposit.  :->   ");
+        double amt = scanner.nextDouble();
+        if (amt > 0){
+            acct.setBalance(acct.getBalance() + amt);
+            UpdateAccount.updateAcctDB(em, acct);
+            System.out.println("Deposit successful. New account balance = "+acct.getBalance());
+        }else {
+            System.out.println("Invalid Amount entered...");
+        }
+
+    }
+
+    public static void withdraw(EntityManager em, Account acct){
+        System.out.println("Your Current Account Balance = " + acct.getBalance());
+        System.out.print("Enter amount you want to Withdraw.  :->   ");
+        double amt = scanner.nextDouble();
+
+        if (acct.getBalance() >= amt){
+            acct.setBalance(acct.getBalance() - amt);
+            UpdateAccount.updateAcctDB(em, acct);
+            System.out.println("Withdraw successful. New account balance = "+acct.getBalance());
+        }else {
+            System.out.println("Invalid Amount entered...");
+        }
+    }
+
+    public static void transferFunds(EntityManager em, Account acct){
+
+        System.out.println("Your Current Account Balance = " + acct.getBalance());
+        System.out.println("");
+        System.out.print("Enter account id of the receipient  :->   ");
+        Account transferToAcct=GetAcctDetails.getAcctByID(em, scanner.nextInt());;
+        if (transferToAcct != null){
+            System.out.print("Enter amount you want to transfered  :->   ");
+            double amt = scanner.nextDouble();
+
+            if (acct.getBalance() >= amt){
+                acct.setBalance(acct.getBalance() - amt);
+                transferToAcct.setBalance(transferToAcct.getBalance() + amt);
+                UpdateAccount.updateAcctMultiDB(em,acct,transferToAcct);
+                System.out.println("Withdraw successful. New account balance = "+acct.getBalance());
+            }else {
+                System.out.println("Invalid Amount entered...");
+            }
+        }else {
+            System.out.println("Invalid Account...");
+        }
+    }
+
+
+
 }

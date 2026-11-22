@@ -1,11 +1,10 @@
-package BankAppJPA.model;
+package BankAppJPA.service;
 
 
+import BankAppJPA.model.Account;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 import org.hibernate.HibernateException;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
 
 import java.sql.SQLException;
 
